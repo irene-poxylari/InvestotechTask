@@ -30,7 +30,42 @@ public class Account {
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
-    public Account() {
+    protected Account() {
+    }
 
+    public Account(String id, User user, String currency, int balanceMinor, Instant createdAt) {
+        this.id = id;
+        this.user = user;
+        this.currency = currency;
+        this.balanceMinor = balanceMinor;
+        this.createdAt = createdAt;
+    }
+
+    public String getId() {
+        return id;
+    }
+
+    public User getUser() {
+        return user;
+    }
+
+    public String getCurrency() {
+        return currency;
+    }
+
+    public long getBalanceMinor() {
+        return balanceMinor;
+    }
+
+    public Instant getCreatedAt() {
+        return createdAt;
+    }
+
+    public void debit(int amount) {
+        this.balanceMinor -= amount;
+    }
+
+    public void credit(int amount) {
+        this.balanceMinor = Math.addExact(this.balanceMinor, amount);
     }
 }
