@@ -1,4 +1,4 @@
-CREATE TABLE customers (
+CREATE TABLE users (
     id UUID PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
     api_key_hash CHAR(64) NOT NULL UNIQUE,
@@ -7,7 +7,7 @@ CREATE TABLE customers (
 
 CREATE TABLE accounts (
     id VARCHAR(100) PRIMARY KEY,
-    customer_id UUID NOT NULL REFERENCES customers(id),
+    user_id UUID NOT NULL REFERENCES users(id),
     currency CHAR(3) NOT NULL,
     balance_minor BIGINT NOT NULL CHECK (balance_minor >= 0),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()

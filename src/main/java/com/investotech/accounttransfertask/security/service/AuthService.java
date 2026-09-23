@@ -6,8 +6,10 @@ import com.investotech.accounttransfertask.entity.User;
 import com.investotech.accounttransfertask.security.ApiKeyHasher;
 import com.investotech.accounttransfertask.security.JwtUtil;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 @Service
 @RequiredArgsConstructor
@@ -22,10 +24,17 @@ public class AuthService {
         if (apiKey == null || apiKey.isBlank()) {
             throw new UnauthorizedException("Missing API key");
         }
-        User user = userRepository.findByApiKeyHash(apiKeyHasher.sha256(apiKey))
-                .orElseThrow(() -> new UnauthorizedException("Invalid API key"));
+        String apiKeyHash = apiKeyHasher.sha256(apiKey);
+        User user = userRepository
+                .findByApiKeyHash(apiKeyHash)
+                .orElseThrow(() ->
+                        new ResponseStatusException(
+                                HttpStatus.UNAUTHORIZED,
+                                "Invalid API key"
+                        )
+                );
 
-        return jwtUtil.generateToken(user.getApiKeyHash());
+        return jwtUtil.generateToken(user.getId());
 
     }
 }
