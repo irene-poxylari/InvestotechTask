@@ -1,0 +1,9 @@
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: transfer-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: mypassword
+      MYSQL_DATABASE: testdb
+    ports:
+      - "8085:3306"
