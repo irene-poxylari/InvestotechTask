@@ -34,10 +34,10 @@ public class AccountService {
     }
 
     @Transactional(readOnly = true)
-    public Account requireOwnedAccount(UUID customerId, String accountId) {
+    public Account requireOwnedAccount(UUID userId, String accountId) {
         Account account = accountRepository.findById(accountId)
                 .orElseThrow(() -> new NotFoundException("Account not found"));
-        if (!account.getUser().getId().equals(customerId)) {
+        if (!account.getUser().getId().equals(userId)) {
             throw new ForbiddenException("You do not own this account");
         }
         return account;

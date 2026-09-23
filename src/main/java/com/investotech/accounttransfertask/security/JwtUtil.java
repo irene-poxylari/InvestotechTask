@@ -41,13 +41,13 @@ public class JwtUtil {
         this.key = Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
     }
 
-    public String generateToken(UUID customerId) {
+    public String generateToken(UUID userId) {
 
         Instant now = Instant.now();
         Instant expiresAt = now.plusMillis(jwtExpirationMs);
 
         return Jwts.builder()
-                .subject(customerId.toString())
+                .subject(userId.toString())
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(expiresAt))
                 .signWith(key)
@@ -71,7 +71,7 @@ public class JwtUtil {
         return false;
     }
 
-    public Optional<UUID> validateAndGetCustomerId(String token) {
+    public Optional<UUID> validateAndGetUserId(String token) {
 
         if (token == null || token.isBlank()) {
             return Optional.empty();

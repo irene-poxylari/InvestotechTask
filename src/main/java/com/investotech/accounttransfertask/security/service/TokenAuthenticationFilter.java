@@ -24,7 +24,7 @@ import java.util.UUID;
 
 @Component
 public class TokenAuthenticationFilter extends OncePerRequestFilter {
-    public static final String USER_ID_ATTRIBUTE = "authenticatedCustomerId";
+    public static final String USER_ID_ATTRIBUTE = "authenticatedUserId";
     private static final String BEARER_PREFIX = "Bearer ";
 
     private final ObjectMapper objectMapper;
@@ -54,7 +54,7 @@ public class TokenAuthenticationFilter extends OncePerRequestFilter {
         }
 
         String token = authorization.substring(BEARER_PREFIX.length()).trim();
-        UUID userId = jwtUtil.validateAndGetCustomerId(token).orElse(null);
+        UUID userId = jwtUtil.validateAndGetUserId(token).orElse(null);
         if (userId == null) {
             writeUnauthorized(response, "Invalid or expired token");
             return;
