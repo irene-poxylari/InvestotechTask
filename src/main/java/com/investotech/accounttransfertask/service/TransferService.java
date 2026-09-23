@@ -108,32 +108,57 @@ public class TransferService {
     }
 
     @Transactional(readOnly = true)
-    public TransferHistoryResponse history(UUID customerId, String accountId, int limit, String cursor) {
+    public TransferHistoryResponse history(
+            UUID customerId,
+            String accountId,
+            int limit,
+            String cursor
+    ) {
         Account account = accountRepository.findById(accountId)
-                .orElseThrow(() -> new NotFoundException("Account not found"));
+                .orElseThrow(() ->
+                        new NotFoundException("Account not found")
+                );
+
         if (!account.getUser().getId().equals(customerId)) {
-            throw new ForbiddenException("You do not own this account");
+            throw new ForbiddenException(
+                    "You do not own this account"
+            );
         }
 
         CursorCodec.Cursor decoded = cursorCodec.decode(cursor);
-        Instant cursorCreatedAt = decoded == null ? null : decoded.createdAt();
-        UUID cursorId = decoded == null ? null : decoded.id();
 
-        List<Transfer> rows = transferRepository.findHistory(
-                accountId,
-                cursorCreatedAt,
-                cursorId,
-                PageRequest.of(0, limit + 1)
-        );
+        PageRequest pageRequest = PageRequest.of(0, limit + 1);
+
+        List<Transfer> rows;
+
+        if (decoded == null) {
+            rows = transferRepository.findFirstHistoryPage(
+                    accountId,
+                    pageRequest
+            );
+        } else {
+            rows = transferRepository.findHistoryAfter(
+                    accountId,
+                    decoded.createdAt(),
+                    decoded.id(),
+                    pageRequest
+            );
+        }
 
         boolean hasMore = rows.size() > limit;
-        List<Transfer> page = hasMore ? rows.subList(0, limit) : rows;
-        String nextCursor = hasMore && !page.isEmpty()
-                ? cursorCodec.encode(page.get(page.size() - 1))
-                : null;
+
+        List<Transfer> page =
+                hasMore ? rows.subList(0, limit) : rows;
+
+        String nextCursor =
+                hasMore && !page.isEmpty()
+                        ? cursorCodec.encode(page.get(page.size() - 1))
+                        : null;
 
         return new TransferHistoryResponse(
-                page.stream().map(t -> TransferHistoryItem.from(t, accountId)).toList(),
+                page.stream()
+                        .map(t -> TransferHistoryItem.from(t, accountId))
+                        .toList(),
                 nextCursor
         );
     }

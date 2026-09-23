@@ -3,8 +3,7 @@ package com.investotech.accounttransfertask.security.service;
 
 import com.investotech.accounttransfertask.exceptions.ApiError;
 import com.investotech.accounttransfertask.security.JwtUtil;
-import com.investotech.accounttransfertask.security.UserAuthentication;
-import io.jsonwebtoken.lang.Collections;
+import java.util.Collections;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -24,7 +23,6 @@ import java.util.UUID;
 
 @Component
 public class TokenAuthenticationFilter extends OncePerRequestFilter {
-    public static final String USER_ID_ATTRIBUTE = "authenticatedUserId";
     private static final String BEARER_PREFIX = "Bearer ";
 
     private final ObjectMapper objectMapper;
@@ -46,30 +44,31 @@ public class TokenAuthenticationFilter extends OncePerRequestFilter {
             HttpServletResponse response,
             FilterChain filterChain
     ) throws ServletException, IOException {
-        String authorization = request.getHeader(HttpHeaders.AUTHORIZATION);
+        String authorization =
+                request.getHeader(HttpHeaders.AUTHORIZATION);
 
-        if (authorization == null || !authorization.startsWith(BEARER_PREFIX)) {
+        if (authorization == null ||
+                !authorization.startsWith(BEARER_PREFIX)) {
             writeUnauthorized(response, "Missing bearer token");
             return;
         }
 
-        String token = authorization.substring(BEARER_PREFIX.length()).trim();
-        UUID userId = jwtUtil.validateAndGetUserId(token).orElse(null);
+        String token = authorization
+                .substring(BEARER_PREFIX.length())
+                .trim();
+
+        UUID userId = jwtUtil
+                .validateAndGetUserId(token)
+                .orElse(null);
+
         if (userId == null) {
-            writeUnauthorized(response, "Invalid or expired token");
+            writeUnauthorized(
+                    response,
+                    "Invalid or expired token"
+            );
             return;
         }
 
-        System.out.println("FILTER userId = " + userId);
-
-        request.setAttribute(USER_ID_ATTRIBUTE, userId);
-
-        System.out.println("BEFORE FILTER CHAIN");
-
-
-
-        System.out.println("AFTER FILTER CHAIN");
-        // Important for Spring Security
         UsernamePasswordAuthenticationToken authentication =
                 new UsernamePasswordAuthenticationToken(
                         userId,
@@ -77,9 +76,11 @@ public class TokenAuthenticationFilter extends OncePerRequestFilter {
                         Collections.emptyList()
                 );
 
-        SecurityContextHolder
-                .getContext()
+        SecurityContextHolder.getContext()
                 .setAuthentication(authentication);
+
+        System.out.println("Authenticated user = " + userId);
+
         filterChain.doFilter(request, response);
     }
 
