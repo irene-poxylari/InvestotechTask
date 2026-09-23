@@ -11,8 +11,8 @@ import java.util.UUID;
 @IdClass(IdempotencyKeyId.class)
 public class IdempotencyKey {
     @Id
-    @Column(name = "customer_id", nullable = false)
-    private UUID customerId;
+    @Column(name = "user_id", nullable = false)
+    private UUID userId;
 
     @Id
     @Column(name = "idempotency_key", nullable = false, length = 200)
@@ -31,9 +31,9 @@ public class IdempotencyKey {
     protected IdempotencyKey() {
     }
 
-    public IdempotencyKey(UUID customerId, String idempotencyKey, String requestHash,
+    public IdempotencyKey(UUID userId, String idempotencyKey, String requestHash,
                           Transfer transfer, Instant createdAt) {
-        this.customerId = customerId;
+        this.userId = userId;
         this.idempotencyKey = idempotencyKey;
         this.requestHash = requestHash;
         this.transfer = transfer;

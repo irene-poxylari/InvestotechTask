@@ -5,37 +5,13 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-
-import java.awt.print.Pageable;
+import org.springframework.data.domain.Pageable;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
 public interface TransferRepository extends JpaRepository<Transfer, UUID> {
 
-    @Query("""
-        select t
-        from Transfer t
-        where (
-            t.sourceAccount.id = :accountId
-            or t.destinationAccount.id = :accountId
-        )
-        and (
-            :cursorCreatedAt is null
-            or t.createdAt < :cursorCreatedAt
-            or (
-                t.createdAt = :cursorCreatedAt
-                and t.id < :cursorId
-            )
-        )
-        order by t.createdAt desc, t.id desc
-        """)
-    List<Transfer> findHistory(
-            @Param("accountId") String accountId,
-            @Param("cursorCreatedAt") Instant cursorCreatedAt,
-            @Param("cursorId") UUID cursorId,
-            Pageable pageable
-    );
     @Query("""
     select t
     from Transfer t
@@ -45,7 +21,7 @@ public interface TransferRepository extends JpaRepository<Transfer, UUID> {
     """)
     List<Transfer> findFirstHistoryPage(
             @Param("accountId") String accountId,
-            PageRequest pageRequest
+            Pageable pageable
     );
     @Query("""
     select t
@@ -67,6 +43,6 @@ public interface TransferRepository extends JpaRepository<Transfer, UUID> {
             @Param("accountId") String accountId,
             @Param("cursorCreatedAt") Instant cursorCreatedAt,
             @Param("cursorId") UUID cursorId,
-            PageRequest pageRequest
+            Pageable pageable
     );
 }

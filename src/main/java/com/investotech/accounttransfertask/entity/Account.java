@@ -1,17 +1,15 @@
 package com.investotech.accounttransfertask.entity;
 
+import com.investotech.accounttransfertask.exceptions.BusinessRuleException;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
 import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.RequiredArgsConstructor;
+
 
 import java.time.Instant;
 
 @Entity
 @Getter
 @Table(name = "accounts")
-@AllArgsConstructor
 public class Account {
     @Id
     @Column(length = 100)
@@ -57,15 +55,29 @@ public class Account {
         return balanceMinor;
     }
 
-    public Instant getCreatedAt() {
-        return createdAt;
-    }
-
     public void debit(int amount) {
-        this.balanceMinor -= amount;
+        requirePositiveAmount(amount);
+
+        if (balanceMinor < 0) {
+            throw new IllegalArgumentException(
+                    "Initial balance must not be negative"
+            );
+        }
+
+        balanceMinor = Math.subtractExact(balanceMinor, amount);
     }
 
     public void credit(int amount) {
-        this.balanceMinor = Math.addExact(this.balanceMinor, amount);
+        requirePositiveAmount(amount);
+        balanceMinor = Math.addExact(balanceMinor, amount);
+    }
+
+    private static void requirePositiveAmount(int amount) {
+        if (amount <= 0) {
+            throw new BusinessRuleException(
+                    "invalid_amount",
+                    "Amount must be greater than zero"
+            );
+        }
     }
 }

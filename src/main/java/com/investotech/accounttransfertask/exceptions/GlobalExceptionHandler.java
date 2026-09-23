@@ -1,58 +1,47 @@
 package com.investotech.accounttransfertask.exceptions;
 
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+
+import java.util.stream.Collectors;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    @ExceptionHandler(ForbiddenException.class)
-    public ResponseEntity<ApiError> handleForbidden(
-            ForbiddenException ex
-    ) {
+    @ExceptionHandler(ApiException.class)
+    public ResponseEntity<ApiError> handleApiException(ApiException ex) {
         return ResponseEntity
-                .status(HttpStatus.FORBIDDEN)
-                .body(ApiError.of(
-                        "forbidden",
-                        ex.getMessage()
-                ));
+                .status(ex.getStatus())
+                .body(ApiError.of(ex.getCode(), ex.getMessage()));
     }
 
-    @ExceptionHandler(NotFoundException.class)
-    public ResponseEntity<ApiError> handleNotFound(
-            NotFoundException ex
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ApiError> handleValidation(
+            MethodArgumentNotValidException ex
     ) {
+        String message = ex.getBindingResult()
+                .getFieldErrors()
+                .stream()
+                .map(error -> error.getField() + ": " + error.getDefaultMessage())
+                .collect(Collectors.joining(", "));
+
         return ResponseEntity
-                .status(HttpStatus.NOT_FOUND)
-                .body(ApiError.of(
-                        "not_found",
-                        ex.getMessage()
-                ));
+                .badRequest()
+                .body(ApiError.of("validation_error", message));
     }
 
-    @ExceptionHandler(ConflictException.class)
-    public ResponseEntity<ApiError> handleConflict(
-            ConflictException ex
-    ) {
-        return ResponseEntity
-                .status(HttpStatus.CONFLICT)
-                .body(ApiError.of(
-                        "conflict",
-                        ex.getMessage()
-                ));
-    }
-
-    @ExceptionHandler(BusinessRuleException.class)
-    public ResponseEntity<ApiError> handleBusinessRule(
-            BusinessRuleException ex
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ApiError> handleMalformedJson(
+            HttpMessageNotReadableException ex
     ) {
         return ResponseEntity
                 .badRequest()
                 .body(ApiError.of(
-                        ex.getCode(),
-                        ex.getMessage()
+                        "malformed_request",
+                        "Request body is invalid or malformed"
                 ));
     }
 }

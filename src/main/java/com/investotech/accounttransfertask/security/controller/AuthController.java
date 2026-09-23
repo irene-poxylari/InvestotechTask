@@ -14,7 +14,10 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public String login(@RequestParam("apiKey") String apiKey) {
+    public LoginResponse login(
+            @RequestHeader(value = "X-API-Key", required = false)
+            String apiKey
+    ) {
         return authService.login(apiKey);
     }
 }

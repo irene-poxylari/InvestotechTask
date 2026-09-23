@@ -5,6 +5,7 @@ import com.investotech.accounttransfertask.repository.UserRepository;
 import com.investotech.accounttransfertask.entity.User;
 import com.investotech.accounttransfertask.security.ApiKeyHasher;
 import com.investotech.accounttransfertask.security.JwtUtil;
+import com.investotech.accounttransfertask.security.LoginResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -20,21 +21,20 @@ public class AuthService {
     private final JwtUtil jwtUtil;
 
     @Transactional(readOnly = true)
-    public String login(String apiKey) {
+    public LoginResponse login(String apiKey) {
         if (apiKey == null || apiKey.isBlank()) {
-            throw new UnauthorizedException("Missing API key");
+            throw new UnauthorizedException("API key is required");
         }
+
         String apiKeyHash = apiKeyHasher.sha256(apiKey);
-        User user = userRepository
-                .findByApiKeyHash(apiKeyHash)
+
+        User user = userRepository.findByApiKeyHash(apiKeyHash)
                 .orElseThrow(() ->
-                        new ResponseStatusException(
-                                HttpStatus.UNAUTHORIZED,
-                                "Invalid API key"
-                        )
+                        new UnauthorizedException("Invalid API key")
                 );
 
-        return jwtUtil.generateToken(user.getId());
+        String token = jwtUtil.generateToken(user.getId());
 
+        return new LoginResponse(token, "Bearer");
     }
 }

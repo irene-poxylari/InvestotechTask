@@ -6,12 +6,11 @@ import com.investotech.accounttransfertask.idempotency.IdempotencyKey;
 import com.investotech.accounttransfertask.idempotency.IdempotencyKeyId;
 import com.investotech.accounttransfertask.idempotency.IdempotencyKeyRepository;
 import com.investotech.accounttransfertask.repository.AccountRepository;
+import com.investotech.accounttransfertask.repository.IdempotencyLockRepository;
 import com.investotech.accounttransfertask.repository.TransferRepository;
 import com.investotech.accounttransfertask.response.TransferResponse;
 import com.investotech.accounttransfertask.security.ApiKeyHasher;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
-import lombok.AllArgsConstructor;
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,15 +22,14 @@ import java.util.Map;
 import java.util.UUID;
 
 @Service
-@AllArgsConstructor
+@RequiredArgsConstructor
 public class TransferService {
     private final ApiKeyHasher hasher;
     private final AccountRepository accountRepository;
     private final TransferRepository transferRepository;
     private final IdempotencyKeyRepository idempotencyRepository;
     private final CursorCodec cursorCodec;
-    @PersistenceContext
-    private final EntityManager entityManager;
+    private final IdempotencyLockRepository idempotencyLockRepository;
 
 
     @Transactional
@@ -43,7 +41,7 @@ public class TransferService {
         }
 
         String requestHash = requestHash(request);
-        lockIdempotencyKey(customerId, idempotencyKey);
+        idempotencyLockRepository.lock(customerId, idempotencyKey);
 
         IdempotencyKeyId keyId = new IdempotencyKeyId(customerId, idempotencyKey);
         var existing = idempotencyRepository.findById(keyId);
@@ -66,18 +64,7 @@ public class TransferService {
         Account source = byId.get(request.sourceAccountId());
         Account destination = byId.get(request.destinationAccountId());
 
-        if (!source.getUser().getId().equals(customerId)) {
-            throw new ForbiddenException("You can transfer money only from an account you own");
-        }
-        if (!source.getCurrency().equals(destination.getCurrency())) {
-            throw new BusinessRuleException("currency_mismatch", "Source and destination accounts must use the same currency");
-        }
-        if (!source.getCurrency().equals(request.currency())) {
-            throw new BusinessRuleException("currency_mismatch", "Request currency must match both accounts");
-        }
-        if (source.getBalanceMinor() < request.amount()) {
-            throw new BusinessRuleException("insufficient_funds", "Source account has insufficient funds");
-        }
+        businessRulesChecks(customerId, request, source, destination);
 
         source.debit(request.amount());
         try {
@@ -105,6 +92,21 @@ public class TransferService {
         ));
 
         return TransferResponse.from(transfer);
+    }
+
+    private static void businessRulesChecks(UUID customerId, CreateTransferRequest request, Account source, Account destination) {
+        if (!source.getUser().getId().equals(customerId)) {
+            throw new ForbiddenException("You can transfer money only from an account you own");
+        }
+        if (!source.getCurrency().equals(destination.getCurrency())) {
+            throw new BusinessRuleException("currency_mismatch", "Source and destination accounts must use the same currency");
+        }
+        if (!source.getCurrency().equals(request.currency())) {
+            throw new BusinessRuleException("currency_mismatch", "Request currency must match both accounts");
+        }
+        if (source.getBalanceMinor() < request.amount()) {
+            throw new BusinessRuleException("insufficient_funds", "Source account has insufficient funds");
+        }
     }
 
     @Transactional(readOnly = true)
@@ -163,15 +165,6 @@ public class TransferService {
         );
     }
 
-    private void validateIdempotencyKey(String idempotencyKey) {
-        if (idempotencyKey == null || idempotencyKey.isBlank()) {
-            throw new BadRequestException("missing_idempotency_key", "Idempotency-Key header is required");
-        }
-        if (idempotencyKey.length() > 200) {
-            throw new BadRequestException("invalid_idempotency_key", "Idempotency-Key must be at most 200 characters");
-        }
-    }
-
     private String requestHash(CreateTransferRequest request) {
         String canonical = request.sourceAccountId() + "\u0000"
                 + request.destinationAccountId() + "\u0000"
@@ -179,27 +172,13 @@ public class TransferService {
                 + request.currency();
         return hasher.sha256(canonical);
     }
-
-    private void lockIdempotencyKey(
-            UUID userId,
-            String idempotencyKey
-    ) {
-        String lockKey = userId + ":" + idempotencyKey;
-
-        entityManager.createNativeQuery("""
-            INSERT IGNORE INTO idempotency_locks (lock_key)
-            VALUES (:lockKey)
-            """)
-                .setParameter("lockKey", lockKey)
-                .executeUpdate();
-
-        entityManager.createNativeQuery("""
-            SELECT lock_key
-            FROM idempotency_locks
-            WHERE lock_key = :lockKey
-            FOR UPDATE
-            """)
-                .setParameter("lockKey", lockKey)
-                .getSingleResult();
+    public void validateIdempotencyKey(String idempotencyKey) {
+        if (idempotencyKey == null || idempotencyKey.isBlank()) {
+            throw new BadRequestException("missing_idempotency_key", "Idempotency-Key header is required");
+        }
+        if (idempotencyKey.length() > 200) {
+            throw new BadRequestException("invalid_idempotency_key", "Idempotency-Key must be at most 200 characters");
+        }
     }
 }
+
